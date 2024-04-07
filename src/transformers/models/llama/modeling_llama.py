@@ -369,7 +369,6 @@ class LlamaAttention(nn.Module):
         value_states = repeat_kv(value_states, self.num_key_value_groups)
 
         attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) / math.sqrt(self.head_dim)
-
         if attention_mask is not None:  # no matter the length, we just slice it
             causal_mask = attention_mask[:, :, :, : key_states.shape[-2]]
             attn_weights = attn_weights + causal_mask
@@ -970,11 +969,12 @@ class LlamaModel(LlamaPreTrainedModel):
 
         if inputs_embeds is None:
             inputs_embeds = self.embed_tokens(input_ids)
-
         past_seen_tokens = 0
         if use_cache:  # kept for BC (cache positions)
-            if not isinstance(past_key_values, StaticCache):
+            use_legacy_cache = not isinstance(past_key_values, Cache)
+            if use_legacy_cache:
                 past_key_values = DynamicCache.from_legacy_cache(past_key_values)
+            if not isinstance(past_key_values, StaticCache):
                 past_seen_tokens = past_key_values.get_seq_length()
 
         if cache_position is None:
